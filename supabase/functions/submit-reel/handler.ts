@@ -1,6 +1,12 @@
 import { analyzeReel, type ClaudeClient, type ReelAnalysis } from "./claude.ts";
 import { type ToolsRepo, upsertToolsForReel } from "./toolsRepo.ts";
 
+export const CORS_HEADERS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
+
 export interface ReelsRepo {
   insertReel(row: {
     url: string;
@@ -31,10 +37,14 @@ function isInstagramUrl(url: string): boolean {
 }
 
 export async function handleSubmitReel(request: Request, deps: HandlerDeps): Promise<Response> {
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
+  }
+
   if (request.method !== "POST") {
     return new Response(JSON.stringify({ error: "Method not allowed" }), {
       status: 405,
-      headers: { "Content-Type": "application/json" },
+      headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
     });
   }
 
@@ -44,14 +54,14 @@ export async function handleSubmitReel(request: Request, deps: HandlerDeps): Pro
   } catch {
     return new Response(JSON.stringify({ error: "Invalid JSON body" }), {
       status: 400,
-      headers: { "Content-Type": "application/json" },
+      headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
     });
   }
 
   if (body.passcode !== deps.expectedPasscode) {
     return new Response(JSON.stringify({ error: "Invalid passcode" }), {
       status: 401,
-      headers: { "Content-Type": "application/json" },
+      headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
     });
   }
 
@@ -59,7 +69,7 @@ export async function handleSubmitReel(request: Request, deps: HandlerDeps): Pro
   if (!url || !isInstagramUrl(url)) {
     return new Response(JSON.stringify({ error: "Provide a valid instagram.com reel URL" }), {
       status: 400,
-      headers: { "Content-Type": "application/json" },
+      headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
     });
   }
 
@@ -83,10 +93,15 @@ export async function handleSubmitReel(request: Request, deps: HandlerDeps): Pro
       viability_reasoning: analysis.viability,
       needs_review: false,
     });
-    await upsertToolsForReel(deps.toolsRepo, reel.id as string, analysis.tools_mentioned);
-    return new Response(JSON.stringify({ reel }), {
+    let toolsWarning: string | undefined;
+    try {
+      await upsertToolsForReel(deps.toolsRepo, reel.id as string, analysis.tools_mentioned);
+    } catch (err) {
+      toolsWarning = `Reel saved, but tools could not be linked: ${(err as Error).message}`;
+    }
+    return new Response(JSON.stringify({ reel, ...(toolsWarning ? { warning: toolsWarning } : {}) }), {
       status: 200,
-      headers: { "Content-Type": "application/json" },
+      headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
     });
   }
 
@@ -105,7 +120,10 @@ export async function handleSubmitReel(request: Request, deps: HandlerDeps): Pro
     needs_review: true,
   });
   return new Response(
-    JSON.stringify({ reel, warning: `Saved, but analysis failed: ${analysisError!.message}` }),
-    { status: 200, headers: { "Content-Type": "application/json" } },
+    JSON.stringify({
+      reel,
+      warning: `Saved, but analysis failed: ${analysisError?.message ?? "unknown error"}`,
+    }),
+    { status: 200, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } },
   );
 }

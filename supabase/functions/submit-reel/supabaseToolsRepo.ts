@@ -5,10 +5,13 @@ import type { Tool, ToolsRepo } from "./toolsRepo.ts";
 export function createSupabaseToolsRepo(client: SupabaseClient): ToolsRepo {
   return {
     async findToolByName(name) {
+      // Escape LIKE metacharacters (%, _, \) so ilike behaves as an exact
+      // case-insensitive match — the schema's uniqueness guarantee is
+      // lower(name) equality, not pattern matching.
       const { data, error } = await client
         .from("tools")
         .select("id, name, category, note")
-        .ilike("name", name)
+        .ilike("name", name.replace(/[%_\\]/g, "\\$&"))
         .maybeSingle();
       if (error) throw error;
       return data as Tool | null;

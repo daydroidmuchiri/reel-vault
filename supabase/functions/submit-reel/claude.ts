@@ -26,7 +26,7 @@ const RESPONSE_SCHEMA = {
         competition: { type: "string" },
         feasibility: { type: "string" },
         cost_to_launch: { type: "string" },
-        score: { type: "integer" },
+        score: { type: "integer", minimum: 1, maximum: 5 },
         reasoning: { type: "string" },
       },
       required: ["market_demand", "competition", "feasibility", "cost_to_launch", "score", "reasoning"],
@@ -91,8 +91,8 @@ export async function analyzeReel(
 ): Promise<ReelAnalysis> {
   const response = await client.messages.create({
     model: "claude-opus-5",
-    max_tokens: 2048,
-    output_config: { format: { type: "json_schema", schema: RESPONSE_SCHEMA } },
+    max_tokens: 8192,
+    output_config: { effort: "low", format: { type: "json_schema", schema: RESPONSE_SCHEMA } },
     messages: [{ role: "user", content: buildReelPrompt(url, caption) }],
   });
   const textBlock = response.content.find((b) => b.type === "text");

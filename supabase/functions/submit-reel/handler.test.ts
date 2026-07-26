@@ -1,5 +1,5 @@
 import { assertEquals, assertRejects } from "https://deno.land/std@0.224.0/assert/mod.ts";
-import { handleSubmitReel, type HandlerDeps, type ReelsRepo } from "./handler.ts";
+import { CORS_HEADERS, handleSubmitReel, type HandlerDeps, type ReelsRepo } from "./handler.ts";
 import type { Tool, ToolsRepo } from "./toolsRepo.ts";
 
 function makeDeps(overrides: Partial<HandlerDeps> = {}): HandlerDeps {
@@ -66,6 +66,17 @@ Deno.test("rejects non-POST requests", async () => {
   assertEquals(res.status, 405);
 });
 
+Deno.test("handles a CORS preflight OPTIONS request with a 204 and CORS headers", async () => {
+  const res = await handleSubmitReel(
+    new Request("http://localhost/submit-reel", { method: "OPTIONS" }),
+    makeDeps(),
+  );
+  assertEquals(res.status, 204);
+  assertEquals(res.headers.get("Access-Control-Allow-Origin"), CORS_HEADERS["Access-Control-Allow-Origin"]);
+  assertEquals(res.headers.get("Access-Control-Allow-Headers"), CORS_HEADERS["Access-Control-Allow-Headers"]);
+  assertEquals(res.headers.get("Access-Control-Allow-Methods"), CORS_HEADERS["Access-Control-Allow-Methods"]);
+});
+
 Deno.test("rejects an invalid passcode", async () => {
   const res = await handleSubmitReel(
     jsonRequest({ url: "https://www.instagram.com/reel/abc", passcode: "wrong" }),
@@ -85,6 +96,8 @@ Deno.test("saves the reel with summary and score on success", async () => {
     makeDeps(),
   );
   assertEquals(res.status, 200);
+  assertEquals(res.headers.get("Access-Control-Allow-Origin"), CORS_HEADERS["Access-Control-Allow-Origin"]);
+  assertEquals(res.headers.get("Content-Type"), "application/json");
   const body = await res.json();
   assertEquals(body.reel.summary, "Summary");
   assertEquals(body.reel.needs_review, false);
@@ -120,6 +133,63 @@ Deno.test("still saves the reel when the caption fetch returns null", async () =
   const body = await res.json();
   assertEquals(body.reel.caption, null);
   assertEquals(body.reel.summary, "Summary");
+});
+
+Deno.test("still returns 200 with a warning when linking tools fails after a successful save", async () => {
+  let insertReelCalls = 0;
+  const deps = makeDeps({
+    reelsRepo: {
+      async insertReel(row) {
+        insertReelCalls++;
+        return { id: "reel-1", ...row };
+      },
+    },
+    toolsRepo: {
+      async findToolByName() {
+        return null;
+      },
+      async createTool(input) {
+        return { id: "tool-1", ...input } as Tool;
+      },
+      async linkReelTool() {
+        throw new Error("tools table unavailable");
+      },
+    },
+    claudeClient: {
+      messages: {
+        create: async () => ({
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify({
+                summary: "Summary",
+                category: "tool",
+                viability: {
+                  market_demand: "n/a",
+                  competition: "n/a",
+                  feasibility: "n/a",
+                  cost_to_launch: "n/a",
+                  score: 3,
+                  reasoning: "n/a",
+                },
+                tools_mentioned: [{ name: "CapCut", category: "video-editing", note: "" }],
+              }),
+            },
+          ],
+        }),
+      },
+    },
+  });
+  const res = await handleSubmitReel(
+    jsonRequest({ url: "https://www.instagram.com/reel/abc", passcode: "1234" }),
+    deps,
+  );
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  assertEquals(body.reel.id, "reel-1");
+  assertEquals(insertReelCalls, 1);
+  assertEquals(typeof body.warning, "string");
+  assertEquals(body.warning.includes("tools could not be linked"), true);
 });
 
 Deno.test("propagates errors when insertReel fails after successful analysis", async () => {
