@@ -12,6 +12,11 @@ Deno.test("buildReelPrompt notes the missing caption when null", () => {
   assertStringIncludes(prompt, "No caption is available");
 });
 
+Deno.test("buildReelPrompt instructs against fabricating details when caption is null", () => {
+  const prompt = buildReelPrompt("https://instagram.com/reel/abc", null);
+  assertStringIncludes(prompt, "Do NOT invent or guess specific plot details");
+});
+
 Deno.test("analyzeReel parses the JSON content from the model response", async () => {
   const analysis = {
     summary: "A tool roundup reel.",

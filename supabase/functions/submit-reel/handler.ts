@@ -96,6 +96,9 @@ export async function handleSubmitReel(request: Request, deps: HandlerDeps): Pro
   }
 
   if (analysis) {
+    // A caption-less analysis has no real grounding — the model was told
+    // not to invent specifics, but that instruction isn't a guarantee, so
+    // flag it for review unconditionally rather than trusting compliance.
     const reel = await deps.reelsRepo.insertReel({
       url,
       caption,
@@ -103,7 +106,7 @@ export async function handleSubmitReel(request: Request, deps: HandlerDeps): Pro
       category: analysis.category,
       viability_score: analysis.viability.score,
       viability_reasoning: analysis.viability,
-      needs_review: false,
+      needs_review: caption === null,
     });
     let toolsWarning: string | undefined;
     try {

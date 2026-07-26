@@ -53,9 +53,14 @@ const RESPONSE_SCHEMA = {
 export function buildReelPrompt(url: string, caption: string | null): string {
   const captionSection = caption
     ? `Caption: """${caption}"""`
-    : "No caption is available for this reel — work from the URL and general " +
-      "knowledge of what kind of content circulates on Instagram reels, and " +
-      "note the reduced confidence in your summary.";
+    : "No caption is available for this reel, and you have no other way to " +
+      "know what it actually shows. Do NOT invent or guess specific plot " +
+      "details, products, businesses, or scenarios — you have no basis for " +
+      "them. State plainly in the summary that the content couldn't be " +
+      'determined without a caption. Set category to "other" unless the URL ' +
+      "itself makes the type obvious (it usually doesn't), and fill the " +
+      "viability fields with a neutral placeholder (e.g. score 3, reasoning " +
+      "noting there was nothing to evaluate).";
   return [
     "You are evaluating an Instagram reel that was saved because it's a " +
       "business idea, a tool recommendation, or something else worth remembering.",

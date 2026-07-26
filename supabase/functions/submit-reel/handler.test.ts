@@ -163,7 +163,7 @@ Deno.test("saves the reel flagged for review when the model returns an out-of-ra
   assertEquals(body.reel.viability_reasoning, null);
 });
 
-Deno.test("still saves the reel when the caption fetch returns null", async () => {
+Deno.test("still saves the reel when the caption fetch returns null, but flags it for review", async () => {
   const deps = makeDeps({ fetchCaption: async () => null });
   const res = await handleSubmitReel(
     jsonRequest({ url: "https://www.instagram.com/reel/abc", passcode: "1234" }),
@@ -173,6 +173,9 @@ Deno.test("still saves the reel when the caption fetch returns null", async () =
   const body = await res.json();
   assertEquals(body.reel.caption, null);
   assertEquals(body.reel.summary, "Summary");
+  // No caption means no real grounding for the analysis — always flag for
+  // review, even though the model returned a well-formed response.
+  assertEquals(body.reel.needs_review, true);
 });
 
 Deno.test("still returns 200 with a warning when linking tools fails after a successful save", async () => {
