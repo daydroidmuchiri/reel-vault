@@ -5,3 +5,10 @@
 }
 body { margin: 0; padding: 1rem; }
 .card { max-width: 640px; margin: 0 auto; }
+.tabs { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
+.tab-button { padding: 0.5rem 1rem; border: 1px solid #888; background: none; border-radius: 6px; cursor: pointer; }
+.tab-button.active { background: #333; color: #fff; }
+form { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1rem; }
+.error { color: #c0392b; }
+.reel-card, .tool-row { border: 1px solid #ddd; border-radius: 8px; padding: 0.75rem; margin-bottom: 0.75rem; }
+.badge-review { background: #f39c12; color: #fff; border-radius: 4px; padding: 0.1rem 0.4rem; font-size: 0.75rem; margin-left: 0.5rem; }

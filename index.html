@@ -9,7 +9,39 @@
   <link rel="stylesheet" href="/src/style.css" />
 </head>
 <body>
-  <p>Reel Vault is loading…</p>
+  <section id="passcode-screen" class="card">
+    <h1>Reel Vault</h1>
+    <form id="passcode-form">
+      <label for="passcode-input">Enter passcode</label>
+      <input id="passcode-input" type="password" inputmode="numeric" autocomplete="off" />
+      <button type="submit">Unlock</button>
+    </form>
+  </section>
+
+  <main id="app" class="card" hidden>
+    <h1>Reel Vault</h1>
+
+    <nav class="tabs">
+      <button type="button" class="tab-button active" data-tab="reels">Reels</button>
+      <button type="button" class="tab-button" data-tab="tools">Tools</button>
+    </nav>
+
+    <section class="tab-panel" data-tab="reels">
+      <form id="reel-form">
+        <label for="reel-url-input">Paste a reel link</label>
+        <input id="reel-url-input" type="url" inputmode="url" placeholder="https://www.instagram.com/reel/..." required />
+        <button id="reel-submit" type="submit">Save reel</button>
+        <p id="reel-error" class="error" aria-live="polite" hidden></p>
+      </form>
+      <div id="reels-list"></div>
+    </section>
+
+    <section class="tab-panel" data-tab="tools" hidden>
+      <input id="tools-search" type="search" placeholder="Search tools by name or category" />
+      <div id="tools-list"></div>
+    </section>
+  </main>
+
   <script type="module" src="/src/main.js"></script>
 </body>
 </html>
