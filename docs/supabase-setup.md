@@ -9,11 +9,16 @@
 ## Edge function
 
 1. Install the Supabase CLI and Deno if not already present.
-2. From the repo root: `supabase functions deploy submit-reel`.
+2. From the repo root: `supabase functions deploy submit-reel --no-verify-jwt`.
+   The frontend calls this function with the public anon key, not a user JWT, so
+   Supabase's default gateway-level JWT check would reject every request with a 401
+   before the handler ever runs. `--no-verify-jwt` is safe here because the
+   passcode checked inside the handler is the real auth boundary, and the anon key
+   is public by design anyway.
 3. Set the function's secrets (never commit these):
    ```
    supabase secrets set ANTHROPIC_API_KEY=sk-ant-...
-   supabase secrets set REEL_VAULT_PASSCODE=<a PIN only you know>
+   supabase secrets set REEL_VAULT_PASSCODE=<a long random passphrase, not a short PIN>
    ```
    `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are injected automatically by the Supabase Edge Runtime — do not set them manually.
 4. Copy the deployed function's URL (`https://<project-ref>.supabase.co/functions/v1/submit-reel`) into `src/config.js` (`submitReelUrl`).
