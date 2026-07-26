@@ -10,11 +10,11 @@
 
 1. Install the Supabase CLI and Deno if not already present.
 2. From the repo root: `supabase functions deploy submit-reel --no-verify-jwt`.
-   The frontend calls this function with the public anon key, not a user JWT, so
+   The frontend sends no auth header at all when calling this function (no
+   `apikey`, no `Authorization` — see `submitReel()` in `src/api.js`), so
    Supabase's default gateway-level JWT check would reject every request with a 401
    before the handler ever runs. `--no-verify-jwt` is safe here because the
-   passcode checked inside the handler is the real auth boundary, and the anon key
-   is public by design anyway.
+   passcode checked inside the handler is the real auth boundary.
 3. Set the function's secrets (never commit these):
    ```
    supabase secrets set ANTHROPIC_API_KEY=sk-ant-...

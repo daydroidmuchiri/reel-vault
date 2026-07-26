@@ -36,6 +36,12 @@ function isInstagramUrl(url: string): boolean {
   }
 }
 
+const VALID_SCORES = new Set([1, 2, 3, 4, 5]);
+
+function hasValidScore(analysis: ReelAnalysis): boolean {
+  return VALID_SCORES.has(analysis.viability.score);
+}
+
 export async function handleSubmitReel(request: Request, deps: HandlerDeps): Promise<Response> {
   if (request.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: CORS_HEADERS });
@@ -79,6 +85,12 @@ export async function handleSubmitReel(request: Request, deps: HandlerDeps): Pro
   let analysisError: Error | null = null;
   try {
     analysis = await analyzeReel(url, caption, deps.claudeClient);
+    if (!hasValidScore(analysis)) {
+      analysisError = new Error(
+        `Claude returned an out-of-range viability score: ${JSON.stringify(analysis.viability.score)}`,
+      );
+      analysis = null;
+    }
   } catch (err) {
     analysisError = err as Error;
   }

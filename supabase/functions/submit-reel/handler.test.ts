@@ -123,6 +123,46 @@ Deno.test("saves the reel flagged for review when Claude analysis fails", async 
   assertEquals(body.reel.summary, null);
 });
 
+Deno.test("saves the reel flagged for review when Claude returns an out-of-range score", async () => {
+  const deps = makeDeps({
+    claudeClient: {
+      messages: {
+        create: async () => ({
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify({
+                summary: "Summary",
+                category: "tool",
+                viability: {
+                  market_demand: "n/a",
+                  competition: "n/a",
+                  feasibility: "n/a",
+                  cost_to_launch: "n/a",
+                  score: 7,
+                  reasoning: "n/a",
+                },
+                tools_mentioned: [],
+              }),
+            },
+          ],
+        }),
+      },
+    },
+  });
+  const res = await handleSubmitReel(
+    jsonRequest({ url: "https://www.instagram.com/reel/abc", passcode: "1234" }),
+    deps,
+  );
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  assertEquals(body.reel.needs_review, true);
+  assertEquals(body.reel.summary, null);
+  assertEquals(body.reel.category, null);
+  assertEquals(body.reel.viability_score, null);
+  assertEquals(body.reel.viability_reasoning, null);
+});
+
 Deno.test("still saves the reel when the caption fetch returns null", async () => {
   const deps = makeDeps({ fetchCaption: async () => null });
   const res = await handleSubmitReel(

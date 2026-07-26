@@ -26,7 +26,7 @@ const RESPONSE_SCHEMA = {
         competition: { type: "string" },
         feasibility: { type: "string" },
         cost_to_launch: { type: "string" },
-        score: { type: "integer", minimum: 1, maximum: 5 },
+        score: { type: "integer", enum: [1, 2, 3, 4, 5] },
         reasoning: { type: "string" },
       },
       required: ["market_demand", "competition", "feasibility", "cost_to_launch", "score", "reasoning"],
