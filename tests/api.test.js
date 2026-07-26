@@ -26,11 +26,13 @@ describe("api", () => {
     await expect(fetchReels()).rejects.toThrow("Failed to load reels: 500");
   });
 
-  it("fetchTools requests the tools table with linked reel ids", async () => {
+  it("fetchTools requests the tools table with linked reel ids and urls", async () => {
     fetch.mockResolvedValueOnce({ ok: true, json: async () => [] });
     await fetchTools();
     const [url] = fetch.mock.calls[0];
-    expect(url).toBe(`${CONFIG.supabaseUrl}/rest/v1/tools?select=*,reel_tools(reel_id)&order=name.asc`);
+    expect(url).toBe(
+      `${CONFIG.supabaseUrl}/rest/v1/tools?select=*,reel_tools(reel_id,reels(url))&order=name.asc`,
+    );
   });
 
   it("submitReel posts the url and stored passcode, returns the reel on success", async () => {

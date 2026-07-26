@@ -12,7 +12,7 @@ function escapeHtml(str) {
 
 export function renderReelCard(reel) {
   const scoreLabel = reel.viability_score ? `${reel.viability_score}/5` : "—";
-  const badge = reel.needs_review ? '<span class="badge badge-review">Needs review</span>' : "";
+  const badge = reel.needs_review ? '<span class="badge-review">Needs review</span>' : "";
   const summary = reel.summary ? escapeHtml(reel.summary) : "No summary yet.";
   return `
     <article class="reel-card">
@@ -32,12 +32,22 @@ export function renderReelCard(reel) {
 export function renderToolRow(tool) {
   const category = tool.category ? escapeHtml(tool.category) : "uncategorized";
   const note = tool.note ? `<p class="tool-note">${escapeHtml(tool.note)}</p>` : "";
-  const reelCount = Array.isArray(tool.reel_tools) ? tool.reel_tools.length : 0;
+  const reelTools = Array.isArray(tool.reel_tools) ? tool.reel_tools : [];
+  const reelCount = reelTools.length;
+  const reelLinks = reelTools
+    .filter((rt) => rt.reels && rt.reels.url)
+    .map(
+      (rt) =>
+        `<a href="${escapeHtml(rt.reels.url)}" target="_blank" rel="noopener">${escapeHtml(rt.reels.url)}</a>`,
+    )
+    .join(", ");
   return `
     <article class="tool-row">
       <h3>${escapeHtml(tool.name)} <span class="tool-category">${category}</span></h3>
       ${note}
-      <p class="tool-source-count">Seen in ${reelCount} reel${reelCount === 1 ? "" : "s"}</p>
+      <p class="tool-source-count">Seen in ${reelCount} reel${reelCount === 1 ? "" : "s"}${
+    reelLinks ? `: ${reelLinks}` : ""
+  }</p>
     </article>
   `.trim();
 }

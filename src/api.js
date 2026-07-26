@@ -10,9 +10,12 @@ export async function fetchReels() {
 }
 
 export async function fetchTools() {
-  const res = await fetch(`${CONFIG.supabaseUrl}/rest/v1/tools?select=*,reel_tools(reel_id)&order=name.asc`, {
-    headers: { apikey: CONFIG.supabaseAnonKey, Authorization: `Bearer ${CONFIG.supabaseAnonKey}` },
-  });
+  const res = await fetch(
+    `${CONFIG.supabaseUrl}/rest/v1/tools?select=*,reel_tools(reel_id,reels(url))&order=name.asc`,
+    {
+      headers: { apikey: CONFIG.supabaseAnonKey, Authorization: `Bearer ${CONFIG.supabaseAnonKey}` },
+    },
+  );
   if (!res.ok) throw new Error(`Failed to load tools: ${res.status}`);
   return res.json();
 }

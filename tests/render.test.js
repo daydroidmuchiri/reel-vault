@@ -32,14 +32,42 @@ describe("renderReelCard", () => {
 
 describe("renderToolRow", () => {
   it("pluralizes the reel count correctly", () => {
-    const one = renderToolRow({ name: "CapCut", category: "video-editing", note: "", reel_tools: [{ reel_id: "1" }] });
-    const two = renderToolRow({ name: "CapCut", category: "video-editing", note: "", reel_tools: [{ reel_id: "1" }, { reel_id: "2" }] });
+    const one = renderToolRow({
+      name: "CapCut",
+      category: "video-editing",
+      note: "",
+      reel_tools: [{ reel_id: "1", reels: { url: "https://www.instagram.com/reel/one/" } }],
+    });
+    const two = renderToolRow({
+      name: "CapCut",
+      category: "video-editing",
+      note: "",
+      reel_tools: [
+        { reel_id: "1", reels: { url: "https://www.instagram.com/reel/one/" } },
+        { reel_id: "2", reels: { url: "https://www.instagram.com/reel/two/" } },
+      ],
+    });
     expect(one).toContain("Seen in 1 reel");
     expect(two).toContain("Seen in 2 reels");
   });
 
   it("falls back to 'uncategorized' when category is missing", () => {
     expect(renderToolRow({ name: "CapCut", category: null, note: "", reel_tools: [] })).toContain("uncategorized");
+  });
+
+  it("links to each source reel's url, escaped", () => {
+    const html = renderToolRow({
+      name: "CapCut",
+      category: "video-editing",
+      note: "",
+      reel_tools: [
+        { reel_id: "1", reels: { url: "https://www.instagram.com/reel/abc/?x=<script>" } },
+      ],
+    });
+    expect(html).toContain('href="https://www.instagram.com/reel/abc/?x=&lt;script&gt;"');
+    expect(html).toContain('target="_blank"');
+    expect(html).toContain('rel="noopener"');
+    expect(html).not.toContain("<script>");
   });
 });
 
