@@ -70,6 +70,7 @@ $("tools-search").addEventListener("input", (e) => {
 $("reel-form").addEventListener("submit", async (e) => {
   e.preventDefault();
   const input = $("reel-url-input");
+  const noteInput = $("reel-note-input");
   const error = $("reel-error");
   const button = $("reel-submit");
   const url = input.value.trim();
@@ -77,7 +78,7 @@ $("reel-form").addEventListener("submit", async (e) => {
   error.hidden = true;
   button.disabled = true;
   button.textContent = "Saving…";
-  const result = await submitReel(url);
+  const result = await submitReel(url, noteInput.value.trim());
   button.disabled = false;
   button.textContent = "Save reel";
   if (!result.ok) {
@@ -86,5 +87,6 @@ $("reel-form").addEventListener("submit", async (e) => {
     return;
   }
   input.value = "";
+  noteInput.value = "";
   loadReels();
 });

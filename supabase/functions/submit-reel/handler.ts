@@ -54,7 +54,7 @@ export async function handleSubmitReel(request: Request, deps: HandlerDeps): Pro
     });
   }
 
-  let body: { url?: string; passcode?: string };
+  let body: { url?: string; passcode?: string; note?: string };
   try {
     body = await request.json();
   } catch {
@@ -79,7 +79,12 @@ export async function handleSubmitReel(request: Request, deps: HandlerDeps): Pro
     });
   }
 
-  const caption = await deps.fetchCaption(url);
+  // A manually-typed note is strictly more reliable than the auto-fetched
+  // caption (Instagram's oEmbed endpoint no longer returns real captions —
+  // see instagram.ts), so prefer it when present and skip the network call
+  // entirely. `note ||` short-circuits before `fetchCaption` is invoked.
+  const note = typeof body.note === "string" ? body.note.trim() : "";
+  const caption = note || (await deps.fetchCaption(url));
 
   let analysis: ReelAnalysis | null = null;
   let analysisError: Error | null = null;

@@ -178,6 +178,49 @@ Deno.test("still saves the reel when the caption fetch returns null, but flags i
   assertEquals(body.reel.needs_review, true);
 });
 
+Deno.test("uses a manually-provided note in place of the auto-fetched caption, and skips the fetch", async () => {
+  let fetchCaptionCalls = 0;
+  const deps = makeDeps({
+    fetchCaption: async () => {
+      fetchCaptionCalls++;
+      return null;
+    },
+  });
+  const res = await handleSubmitReel(
+    jsonRequest({
+      url: "https://www.instagram.com/reel/abc",
+      passcode: "1234",
+      note: "5 tools every founder needs",
+    }),
+    deps,
+  );
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  assertEquals(body.reel.caption, "5 tools every founder needs");
+  // A real note grounds the analysis just like a real caption would —
+  // it should NOT be forced into needs_review.
+  assertEquals(body.reel.needs_review, false);
+  assertEquals(fetchCaptionCalls, 0);
+});
+
+Deno.test("falls back to the auto-fetched caption when note is blank or whitespace-only", async () => {
+  let fetchCaptionCalls = 0;
+  const deps = makeDeps({
+    fetchCaption: async () => {
+      fetchCaptionCalls++;
+      return "auto-fetched caption";
+    },
+  });
+  const res = await handleSubmitReel(
+    jsonRequest({ url: "https://www.instagram.com/reel/abc", passcode: "1234", note: "   " }),
+    deps,
+  );
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  assertEquals(body.reel.caption, "auto-fetched caption");
+  assertEquals(fetchCaptionCalls, 1);
+});
+
 Deno.test("still returns 200 with a warning when linking tools fails after a successful save", async () => {
   let insertReelCalls = 0;
   const deps = makeDeps({

@@ -35,14 +35,22 @@ describe("api", () => {
     );
   });
 
-  it("submitReel posts the url and stored passcode, returns the reel on success", async () => {
+  it("submitReel posts the url, stored passcode, and an empty note by default", async () => {
     fetch.mockResolvedValueOnce({ ok: true, json: async () => ({ reel: { id: "1" } }) });
     const result = await submitReel("https://www.instagram.com/reel/abc");
     expect(result).toEqual({ ok: true, reel: { id: "1" } });
     const [url, opts] = fetch.mock.calls[0];
     expect(url).toBe(CONFIG.submitReelUrl);
     const body = JSON.parse(opts.body);
-    expect(body).toEqual({ url: "https://www.instagram.com/reel/abc", passcode: "1234" });
+    expect(body).toEqual({ url: "https://www.instagram.com/reel/abc", passcode: "1234", note: "" });
+  });
+
+  it("submitReel posts a manually-provided note when given", async () => {
+    fetch.mockResolvedValueOnce({ ok: true, json: async () => ({ reel: { id: "1" } }) });
+    await submitReel("https://www.instagram.com/reel/abc", "5 tools every founder needs");
+    const [, opts] = fetch.mock.calls[0];
+    const body = JSON.parse(opts.body);
+    expect(body.note).toBe("5 tools every founder needs");
   });
 
   it("submitReel returns the server error message on failure", async () => {

@@ -16,14 +16,14 @@ This spec covers **Phase 1: the web app** — ingestion, summarization/evaluatio
 
 ## User flow
 
-1. Daniel opens the PWA (passcode-gated) and pastes a reel URL into a single-field form.
-2. Backend fetches the reel's public caption via Instagram's oEmbed endpoint, best-effort.
-3. Backend calls an LLM with the caption + URL, asking for a structured JSON response: summary, category, viability evaluation, and any tools mentioned.
+1. Daniel opens the PWA (passcode-gated) and pastes a reel URL into a form, with an optional "what's this about?" note field.
+2. If a note was provided, it's used directly. Otherwise the backend tries to fetch the reel's public caption via Instagram's oEmbed endpoint, best-effort. **In practice this always returns nothing** — Instagram's oEmbed now redirects to a login-walled page rather than returning JSON, confirmed by live testing after launch — so the note field is the real mechanism for giving the LLM something to analyze; oEmbed is kept only as a harmless, no-cost fallback attempt.
+3. Backend calls an LLM with the note/caption + URL, asking for a structured JSON response: summary, category, viability evaluation, and any tools mentioned.
 4. The reel is saved and appears in a feed with its summary and viability score.
 5. Any tools mentioned are added to (or matched against) a separate Tools tab, linked back to the source reel.
 6. Daniel can browse/search the Tools tab by name or category at any time — this is the "recall" mechanism for Phase 1.
 
-If the caption fetch or the LLM call fails, the reel is still saved (URL only) and flagged as needing review rather than being dropped.
+If no note/caption is available, the model is instructed to say so plainly rather than inventing plausible-sounding specifics, and the reel is always flagged `needs_review` in that case regardless of what the model returns. If the LLM call fails outright, the reel is still saved (URL only) and flagged as needing review rather than being dropped.
 
 ## Architecture
 
@@ -38,7 +38,7 @@ If the caption fetch or the LLM call fails, the reel is still saved (URL only) a
 reels
   id                  uuid, pk
   url                 text, not null
-  caption             text, nullable        -- from oEmbed; null if fetch failed
+  caption             text, nullable        -- manual note if provided, else oEmbed (usually null in practice)
   summary             text, nullable
   category            text, nullable         -- 'business-idea' | 'tool' | 'other'
   viability_score      int, nullable          -- 1-5
@@ -91,7 +91,7 @@ A second tab in the same app. Search/filter by name or category; each tool entry
 
 ## Error handling
 
-- oEmbed fetch fails → reel saved with `caption = null`, the model still runs on URL alone.
+- No note provided and oEmbed fetch fails (the normal case) → reel saved with `caption = null`, the model still runs on URL alone and is told not to invent specifics; `needs_review` is forced true.
 - LLM call fails or returns malformed JSON → reel saved with `needs_review = true`, no summary/score; Daniel can retry manually later (retry button, not in this spec's initial cut if time-constrained).
 - No user-facing error states beyond "needs review" — this is a low-stakes personal tool.
 
