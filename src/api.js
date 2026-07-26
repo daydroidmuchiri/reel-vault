@@ -19,11 +19,16 @@ export async function fetchTools() {
 
 export async function submitReel(url) {
   const passcode = getStoredPasscode();
-  const res = await fetch(CONFIG.submitReelUrl, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ url, passcode }),
-  });
+  let res;
+  try {
+    res = await fetch(CONFIG.submitReelUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url, passcode }),
+    });
+  } catch (err) {
+    return { ok: false, error: `Network error: ${err.message}` };
+  }
   const body = await res.json().catch(() => ({}));
   if (!res.ok) {
     return { ok: false, error: body.error || `Request failed: ${res.status}` };

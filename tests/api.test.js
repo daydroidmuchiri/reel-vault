@@ -48,4 +48,10 @@ describe("api", () => {
     const result = await submitReel("https://www.instagram.com/reel/abc");
     expect(result).toEqual({ ok: false, error: "Invalid passcode" });
   });
+
+  it("submitReel returns a network error on fetch failure", async () => {
+    fetch.mockRejectedValueOnce(new Error("offline"));
+    const result = await submitReel("https://www.instagram.com/reel/abc");
+    expect(result).toEqual({ ok: false, error: expect.stringContaining("offline") });
+  });
 });
