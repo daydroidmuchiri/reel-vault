@@ -1,4 +1,4 @@
-import { assertEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
+import { assertEquals, assertRejects } from "https://deno.land/std@0.224.0/assert/mod.ts";
 import { handleSubmitReel, type HandlerDeps, type ReelsRepo } from "./handler.ts";
 import type { Tool, ToolsRepo } from "./toolsRepo.ts";
 
@@ -116,7 +116,26 @@ Deno.test("still saves the reel when the caption fetch returns null", async () =
     jsonRequest({ url: "https://www.instagram.com/reel/abc", passcode: "1234" }),
     deps,
   );
+  assertEquals(res.status, 200);
   const body = await res.json();
   assertEquals(body.reel.caption, null);
   assertEquals(body.reel.summary, "Summary");
+});
+
+Deno.test("propagates errors when insertReel fails after successful analysis", async () => {
+  const deps = makeDeps({
+    reelsRepo: {
+      async insertReel() {
+        throw new Error("database connection failed");
+      },
+    },
+  });
+  await assertRejects(
+    () => handleSubmitReel(
+      jsonRequest({ url: "https://www.instagram.com/reel/abc", passcode: "1234" }),
+      deps,
+    ),
+    Error,
+    "database connection failed",
+  );
 });

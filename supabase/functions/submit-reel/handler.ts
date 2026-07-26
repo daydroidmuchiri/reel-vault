@@ -1,4 +1,4 @@
-import { analyzeReel, type ClaudeClient } from "./claude.ts";
+import { analyzeReel, type ClaudeClient, type ReelAnalysis } from "./claude.ts";
 import { type ToolsRepo, upsertToolsForReel } from "./toolsRepo.ts";
 
 export interface ReelsRepo {
@@ -32,29 +32,48 @@ function isInstagramUrl(url: string): boolean {
 
 export async function handleSubmitReel(request: Request, deps: HandlerDeps): Promise<Response> {
   if (request.method !== "POST") {
-    return new Response(JSON.stringify({ error: "Method not allowed" }), { status: 405 });
+    return new Response(JSON.stringify({ error: "Method not allowed" }), {
+      status: 405,
+      headers: { "Content-Type": "application/json" },
+    });
   }
 
   let body: { url?: string; passcode?: string };
   try {
     body = await request.json();
   } catch {
-    return new Response(JSON.stringify({ error: "Invalid JSON body" }), { status: 400 });
+    return new Response(JSON.stringify({ error: "Invalid JSON body" }), {
+      status: 400,
+      headers: { "Content-Type": "application/json" },
+    });
   }
 
   if (body.passcode !== deps.expectedPasscode) {
-    return new Response(JSON.stringify({ error: "Invalid passcode" }), { status: 401 });
+    return new Response(JSON.stringify({ error: "Invalid passcode" }), {
+      status: 401,
+      headers: { "Content-Type": "application/json" },
+    });
   }
 
   const url = (body.url ?? "").trim();
   if (!url || !isInstagramUrl(url)) {
-    return new Response(JSON.stringify({ error: "Provide a valid instagram.com reel URL" }), { status: 400 });
+    return new Response(JSON.stringify({ error: "Provide a valid instagram.com reel URL" }), {
+      status: 400,
+      headers: { "Content-Type": "application/json" },
+    });
   }
 
   const caption = await deps.fetchCaption(url);
 
+  let analysis: ReelAnalysis | null = null;
+  let analysisError: Error | null = null;
   try {
-    const analysis = await analyzeReel(url, caption, deps.claudeClient);
+    analysis = await analyzeReel(url, caption, deps.claudeClient);
+  } catch (err) {
+    analysisError = err as Error;
+  }
+
+  if (analysis) {
     const reel = await deps.reelsRepo.insertReel({
       url,
       caption,
@@ -69,22 +88,24 @@ export async function handleSubmitReel(request: Request, deps: HandlerDeps): Pro
       status: 200,
       headers: { "Content-Type": "application/json" },
     });
-  } catch (err) {
-    // Claude call or parsing failed — save the reel anyway so nothing is
-    // lost, flagged for manual review, per the design spec's
-    // degrade-gracefully rule.
-    const reel = await deps.reelsRepo.insertReel({
-      url,
-      caption,
-      summary: null,
-      category: null,
-      viability_score: null,
-      viability_reasoning: null,
-      needs_review: true,
-    });
-    return new Response(
-      JSON.stringify({ reel, warning: `Saved, but analysis failed: ${(err as Error).message}` }),
-      { status: 200, headers: { "Content-Type": "application/json" } },
-    );
   }
+
+  // Claude call or parsing failed — save the reel anyway so nothing is
+  // lost, flagged for manual review, per the design spec's
+  // degrade-gracefully rule. insertReel here is NOT inside a try/catch:
+  // if it throws, that's a real persistence failure and should propagate
+  // rather than being silently swallowed.
+  const reel = await deps.reelsRepo.insertReel({
+    url,
+    caption,
+    summary: null,
+    category: null,
+    viability_score: null,
+    viability_reasoning: null,
+    needs_review: true,
+  });
+  return new Response(
+    JSON.stringify({ reel, warning: `Saved, but analysis failed: ${analysisError!.message}` }),
+    { status: 200, headers: { "Content-Type": "application/json" } },
+  );
 }
