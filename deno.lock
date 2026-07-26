@@ -3,6 +3,7 @@
   "specifiers": {
     "npm:@anthropic-ai/sdk@*": "0.115.0",
     "npm:@supabase/supabase-js@*": "2.110.8",
+    "npm:openai@*": "6.49.0",
     "npm:vite@6": "6.4.3",
     "npm:vitest@3": "3.2.7"
   },
@@ -513,6 +514,9 @@
     "nanoid@3.3.16": {
       "integrity": "sha512-bzlKTyNJ7+LdGIIwy8ijFpIqEQIvafahV7eYykJ8Cvh42EdJeODoJ6gUJXpQJvej1BddH8OqTXZNE/KfbWAu8Q==",
       "bin": true
+    },
+    "openai@6.49.0": {
+      "integrity": "sha512-aYCc0C6L864eR6WSYIwQGyXriw/nIyZx0ObvhzOEVuk0zoBDpynjSbrionWI7q65B5H8jJX0DXR9snEzM6bfPg=="
     },
     "pathe@2.0.3": {
       "integrity": "sha512-WUjGcAqP1gQacoQe+OBJsFA7Ld4DyXuUIjZ5cc75cLHvJ7dtNsTugphxIADwspS+AraAUePCKrSVtPLFj/F88w=="

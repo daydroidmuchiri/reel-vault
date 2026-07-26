@@ -17,8 +17,14 @@
    passcode checked inside the handler is the real auth boundary.
 3. Set the function's secrets (never commit these):
    ```
-   supabase secrets set ANTHROPIC_API_KEY=sk-ant-...
+   supabase secrets set GITHUB_MODELS_TOKEN=github_pat_...
    supabase secrets set REEL_VAULT_PASSCODE=<a long random passphrase, not a short PIN>
    ```
+   `GITHUB_MODELS_TOKEN` is a fine-grained GitHub personal access token with
+   only the **`models: read`** permission — generate one at
+   github.com/settings/tokens. The edge function uses it to call
+   `openai/gpt-4.1-mini` through GitHub Models' free, OpenAI-compatible
+   endpoint (`https://models.github.ai/inference`) instead of paying for
+   Claude API credits.
    `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are injected automatically by the Supabase Edge Runtime — do not set them manually.
 4. Copy the deployed function's URL (`https://<project-ref>.supabase.co/functions/v1/submit-reel`) into `src/config.js` (`submitReelUrl`).

@@ -1,4 +1,4 @@
-import { analyzeReel, type ClaudeClient, type ReelAnalysis } from "./claude.ts";
+import { analyzeReel, type AnalysisClient, type ReelAnalysis } from "./claude.ts";
 import { type ToolsRepo, upsertToolsForReel } from "./toolsRepo.ts";
 
 export const CORS_HEADERS = {
@@ -22,7 +22,7 @@ export interface ReelsRepo {
 export interface HandlerDeps {
   expectedPasscode: string;
   fetchCaption: (url: string) => Promise<string | null>;
-  claudeClient: ClaudeClient;
+  analysisClient: AnalysisClient;
   reelsRepo: ReelsRepo;
   toolsRepo: ToolsRepo;
 }
@@ -84,10 +84,10 @@ export async function handleSubmitReel(request: Request, deps: HandlerDeps): Pro
   let analysis: ReelAnalysis | null = null;
   let analysisError: Error | null = null;
   try {
-    analysis = await analyzeReel(url, caption, deps.claudeClient);
+    analysis = await analyzeReel(url, caption, deps.analysisClient);
     if (!hasValidScore(analysis)) {
       analysisError = new Error(
-        `Claude returned an out-of-range viability score: ${JSON.stringify(analysis.viability.score)}`,
+        `Model returned an out-of-range viability score: ${JSON.stringify(analysis.viability.score)}`,
       );
       analysis = null;
     }
@@ -117,7 +117,7 @@ export async function handleSubmitReel(request: Request, deps: HandlerDeps): Pro
     });
   }
 
-  // Claude call or parsing failed — save the reel anyway so nothing is
+  // Analysis call or parsing failed — save the reel anyway so nothing is
   // lost, flagged for manual review, per the design spec's
   // degrade-gracefully rule. insertReel here is NOT inside a try/catch:
   // if it throws, that's a real persistence failure and should propagate

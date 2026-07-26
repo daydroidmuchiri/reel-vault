@@ -1,4 +1,4 @@
-import Anthropic from "npm:@anthropic-ai/sdk";
+import OpenAI from "npm:openai";
 
 export interface ReelAnalysis {
   summary: string;
@@ -78,30 +78,41 @@ export function buildReelPrompt(url: string, caption: string | null): string {
   ].join("\n");
 }
 
-export interface ClaudeClient {
-  messages: {
-    create: (params: unknown) => Promise<{ content: Array<{ type: string; text?: string }> }>;
+// GitHub Models (https://models.github.ai) exposes OpenAI-family models
+// through an OpenAI-compatible Chat Completions API — this interface is
+// intentionally just the slice of the OpenAI SDK's shape that analyzeReel
+// needs, so tests can supply a fake without touching the network.
+export interface AnalysisClient {
+  chat: {
+    completions: {
+      create: (params: unknown) => Promise<{ choices: Array<{ message: { content: string | null } }> }>;
+    };
   };
 }
 
 export async function analyzeReel(
   url: string,
   caption: string | null,
-  client: ClaudeClient,
+  client: AnalysisClient,
 ): Promise<ReelAnalysis> {
-  const response = await client.messages.create({
-    model: "claude-opus-5",
-    max_tokens: 8192,
-    output_config: { effort: "low", format: { type: "json_schema", schema: RESPONSE_SCHEMA } },
+  const response = await client.chat.completions.create({
+    model: "openai/gpt-4.1-mini",
     messages: [{ role: "user", content: buildReelPrompt(url, caption) }],
+    response_format: {
+      type: "json_schema",
+      json_schema: { name: "reel_analysis", strict: true, schema: RESPONSE_SCHEMA },
+    },
   });
-  const textBlock = response.content.find((b) => b.type === "text");
-  if (!textBlock?.text) {
-    throw new Error("Claude response contained no text block");
+  const content = response.choices[0]?.message?.content;
+  if (!content) {
+    throw new Error("Model response contained no content");
   }
-  return JSON.parse(textBlock.text) as ReelAnalysis;
+  return JSON.parse(content) as ReelAnalysis;
 }
 
-export function createAnthropicClient(apiKey: string): ClaudeClient {
-  return new Anthropic({ apiKey }) as unknown as ClaudeClient;
+export function createModelClient(apiKey: string): AnalysisClient {
+  return new OpenAI({
+    apiKey,
+    baseURL: "https://models.github.ai/inference",
+  }) as unknown as AnalysisClient;
 }

@@ -4,7 +4,7 @@ Date: 2026-07-26
 
 ## Problem
 
-Daniel saves a lot of Instagram reels, mostly business ideas and tool recommendations. There's no system for capturing them — ideas and tools get lost in the Saved collection, un-evaluated and un-searchable. He wants a personal app that: (1) lets him paste a reel link and get a Claude-generated summary + business-viability score, and (2) builds a searchable catalog of tools mentioned across reels, so he can look them up while working on other projects.
+Daniel saves a lot of Instagram reels, mostly business ideas and tool recommendations. There's no system for capturing them — ideas and tools get lost in the Saved collection, un-evaluated and un-searchable. He wants a personal app that: (1) lets him paste a reel link and get an LLM-generated summary + business-viability score, and (2) builds a searchable catalog of tools mentioned across reels, so he can look them up while working on other projects.
 
 ## Scope
 
@@ -18,19 +18,19 @@ This spec covers **Phase 1: the web app** — ingestion, summarization/evaluatio
 
 1. Daniel opens the PWA (passcode-gated) and pastes a reel URL into a single-field form.
 2. Backend fetches the reel's public caption via Instagram's oEmbed endpoint, best-effort.
-3. Backend calls the Claude API with the caption + URL, asking for a structured JSON response: summary, category, viability evaluation, and any tools mentioned.
+3. Backend calls an LLM with the caption + URL, asking for a structured JSON response: summary, category, viability evaluation, and any tools mentioned.
 4. The reel is saved and appears in a feed with its summary and viability score.
 5. Any tools mentioned are added to (or matched against) a separate Tools tab, linked back to the source reel.
 6. Daniel can browse/search the Tools tab by name or category at any time — this is the "recall" mechanism for Phase 1.
 
-If the caption fetch or the Claude call fails, the reel is still saved (URL only) and flagged as needing review rather than being dropped.
+If the caption fetch or the LLM call fails, the reel is still saved (URL only) and flagged as needing review rather than being dropped.
 
 ## Architecture
 
 - **Frontend:** Single-page PWA, installable to the home screen. Two views: a submit form + feed of saved reels, and a Tools tab (search/filter catalog).
 - **Backend:** Supabase (Postgres + Edge Functions), matching the stack used in `video-to-food`.
 - **Auth:** A simple PIN/passcode gate on the PWA. No multi-user auth — this is Daniel's personal tool.
-- **LLM:** Claude API, model `claude-opus-5` (project default per house convention), called server-side from the Edge Function that handles submission.
+- **LLM:** GitHub Models' free OpenAI-compatible endpoint, model `openai/gpt-4.1-mini`, called server-side from the Edge Function that handles submission. (Originally spec'd against the Claude API; switched to avoid spending Anthropic credits on a personal low-volume tool — see the implementation plan and commit history for the swap.)
 
 ## Data model
 
@@ -59,9 +59,9 @@ reel_tools
   primary key (reel_id, tool_id)
 ```
 
-## Claude integration
+## LLM integration
 
-On submit, the Edge Function calls the Claude API once per reel with the caption (if available) and URL, requesting structured JSON output (`output_config.format`) shaped like:
+On submit, the Edge Function calls the model once per reel with the caption (if available) and URL, requesting structured JSON output (`response_format: json_schema`, strict mode) shaped like:
 
 ```json
 {
@@ -83,7 +83,7 @@ On submit, the Edge Function calls the Claude API once per reel with the caption
 
 **Viability lens:** standard startup framework — market demand, competition/differentiation, feasibility for a solo/small builder, rough cost/effort to launch — plus an overall 1–5 score with reasoning. This is a prompt template, not hardcoded logic, so the framework can be tuned later without a schema change.
 
-If the caption is missing, Claude is asked to work from the URL alone and produce a lower-confidence summary rather than failing outright.
+If the caption is missing, the model is asked to work from the URL alone and produce a lower-confidence summary rather than failing outright.
 
 ## Tools catalog (recall mechanism, Phase 1)
 
@@ -91,8 +91,8 @@ A second tab in the same app. Search/filter by name or category; each tool entry
 
 ## Error handling
 
-- oEmbed fetch fails → reel saved with `caption = null`, Claude still runs on URL alone.
-- Claude call fails or returns malformed JSON → reel saved with `needs_review = true`, no summary/score; Daniel can retry manually later (retry button, not in this spec's initial cut if time-constrained).
+- oEmbed fetch fails → reel saved with `caption = null`, the model still runs on URL alone.
+- LLM call fails or returns malformed JSON → reel saved with `needs_review = true`, no summary/score; Daniel can retry manually later (retry button, not in this spec's initial cut if time-constrained).
 - No user-facing error states beyond "needs review" — this is a low-stakes personal tool.
 
 ## Testing

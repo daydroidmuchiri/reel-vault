@@ -12,7 +12,7 @@ Deno.test("buildReelPrompt notes the missing caption when null", () => {
   assertStringIncludes(prompt, "No caption is available");
 });
 
-Deno.test("analyzeReel parses the JSON text block from the Claude response", async () => {
+Deno.test("analyzeReel parses the JSON content from the model response", async () => {
   const analysis = {
     summary: "A tool roundup reel.",
     category: "tool",
@@ -27,15 +27,22 @@ Deno.test("analyzeReel parses the JSON text block from the Claude response", asy
     tools_mentioned: [{ name: "CapCut", category: "video-editing", note: "free mobile editor" }],
   };
   const fakeClient = {
-    messages: {
-      create: async () => ({ content: [{ type: "text", text: JSON.stringify(analysis) }] }),
+    chat: {
+      completions: {
+        create: async () => ({ choices: [{ message: { content: JSON.stringify(analysis) } }] }),
+      },
     },
   };
   const result = await analyzeReel("https://instagram.com/reel/abc", "caption", fakeClient);
   assertEquals(result, analysis);
 });
 
-Deno.test("analyzeReel throws when the response has no text block", async () => {
-  const fakeClient = { messages: { create: async () => ({ content: [] }) } };
+Deno.test("analyzeReel throws when the response has no content", async () => {
+  const fakeClient = { chat: { completions: { create: async () => ({ choices: [{ message: { content: null } }] }) } } };
+  await assertRejects(() => analyzeReel("https://instagram.com/reel/abc", null, fakeClient));
+});
+
+Deno.test("analyzeReel throws when the response has no choices at all", async () => {
+  const fakeClient = { chat: { completions: { create: async () => ({ choices: [] }) } } };
   await assertRejects(() => analyzeReel("https://instagram.com/reel/abc", null, fakeClient));
 });

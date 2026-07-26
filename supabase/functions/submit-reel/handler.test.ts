@@ -2,6 +2,31 @@ import { assertEquals, assertRejects } from "https://deno.land/std@0.224.0/asser
 import { CORS_HEADERS, handleSubmitReel, type HandlerDeps, type ReelsRepo } from "./handler.ts";
 import type { Tool, ToolsRepo } from "./toolsRepo.ts";
 
+function fakeAnalysisResponse(overrides: Record<string, unknown> = {}) {
+  return {
+    choices: [
+      {
+        message: {
+          content: JSON.stringify({
+            summary: "Summary",
+            category: "tool",
+            viability: {
+              market_demand: "n/a",
+              competition: "n/a",
+              feasibility: "n/a",
+              cost_to_launch: "n/a",
+              score: 3,
+              reasoning: "n/a",
+            },
+            tools_mentioned: [],
+            ...overrides,
+          }),
+        },
+      },
+    ],
+  };
+}
+
 function makeDeps(overrides: Partial<HandlerDeps> = {}): HandlerDeps {
   const insertedReels: Array<Record<string, unknown>> = [];
   const reelsRepo: ReelsRepo = {
@@ -23,28 +48,11 @@ function makeDeps(overrides: Partial<HandlerDeps> = {}): HandlerDeps {
   return {
     expectedPasscode: "1234",
     fetchCaption: async () => "a caption",
-    claudeClient: {
-      messages: {
-        create: async () => ({
-          content: [
-            {
-              type: "text",
-              text: JSON.stringify({
-                summary: "Summary",
-                category: "tool",
-                viability: {
-                  market_demand: "n/a",
-                  competition: "n/a",
-                  feasibility: "n/a",
-                  cost_to_launch: "n/a",
-                  score: 3,
-                  reasoning: "n/a",
-                },
-                tools_mentioned: [],
-              }),
-            },
-          ],
-        }),
+    analysisClient: {
+      chat: {
+        completions: {
+          create: async () => fakeAnalysisResponse(),
+        },
       },
     },
     reelsRepo,
@@ -103,12 +111,14 @@ Deno.test("saves the reel with summary and score on success", async () => {
   assertEquals(body.reel.needs_review, false);
 });
 
-Deno.test("saves the reel flagged for review when Claude analysis fails", async () => {
+Deno.test("saves the reel flagged for review when analysis fails", async () => {
   const deps = makeDeps({
-    claudeClient: {
-      messages: {
-        create: async () => {
-          throw new Error("api down");
+    analysisClient: {
+      chat: {
+        completions: {
+          create: async () => {
+            throw new Error("api down");
+          },
         },
       },
     },
@@ -123,30 +133,20 @@ Deno.test("saves the reel flagged for review when Claude analysis fails", async 
   assertEquals(body.reel.summary, null);
 });
 
-Deno.test("saves the reel flagged for review when Claude returns an out-of-range score", async () => {
+Deno.test("saves the reel flagged for review when the model returns an out-of-range score", async () => {
   const deps = makeDeps({
-    claudeClient: {
-      messages: {
-        create: async () => ({
-          content: [
-            {
-              type: "text",
-              text: JSON.stringify({
-                summary: "Summary",
-                category: "tool",
-                viability: {
-                  market_demand: "n/a",
-                  competition: "n/a",
-                  feasibility: "n/a",
-                  cost_to_launch: "n/a",
-                  score: 7,
-                  reasoning: "n/a",
-                },
-                tools_mentioned: [],
-              }),
-            },
-          ],
-        }),
+    analysisClient: {
+      chat: {
+        completions: {
+          create: async () => fakeAnalysisResponse({ viability: {
+            market_demand: "n/a",
+            competition: "n/a",
+            feasibility: "n/a",
+            cost_to_launch: "n/a",
+            score: 7,
+            reasoning: "n/a",
+          } }),
+        },
       },
     },
   });
@@ -195,28 +195,12 @@ Deno.test("still returns 200 with a warning when linking tools fails after a suc
         throw new Error("tools table unavailable");
       },
     },
-    claudeClient: {
-      messages: {
-        create: async () => ({
-          content: [
-            {
-              type: "text",
-              text: JSON.stringify({
-                summary: "Summary",
-                category: "tool",
-                viability: {
-                  market_demand: "n/a",
-                  competition: "n/a",
-                  feasibility: "n/a",
-                  cost_to_launch: "n/a",
-                  score: 3,
-                  reasoning: "n/a",
-                },
-                tools_mentioned: [{ name: "CapCut", category: "video-editing", note: "" }],
-              }),
-            },
-          ],
-        }),
+    analysisClient: {
+      chat: {
+        completions: {
+          create: async () =>
+            fakeAnalysisResponse({ tools_mentioned: [{ name: "CapCut", category: "video-editing", note: "" }] }),
+        },
       },
     },
   });
