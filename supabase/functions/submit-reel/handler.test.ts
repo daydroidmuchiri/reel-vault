@@ -178,6 +178,21 @@ Deno.test("still saves the reel when the caption fetch returns null, but flags i
   assertEquals(body.reel.needs_review, true);
 });
 
+Deno.test("stores no viability score when there is no caption to ground it", async () => {
+  const deps = makeDeps({ fetchCaption: async () => null });
+  const res = await handleSubmitReel(
+    jsonRequest({ url: "https://www.instagram.com/reel/abc", passcode: "1234" }),
+    deps,
+  );
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  // With no caption the prompt tells the model to emit a neutral placeholder
+  // score (see buildReelPrompt) — that number is filler, not an assessment,
+  // so it must not be persisted and rendered as if it were a real score.
+  assertEquals(body.reel.viability_score, null);
+  assertEquals(body.reel.viability_reasoning, null);
+});
+
 Deno.test("uses a manually-provided note in place of the auto-fetched caption, and skips the fetch", async () => {
   let fetchCaptionCalls = 0;
   const deps = makeDeps({
