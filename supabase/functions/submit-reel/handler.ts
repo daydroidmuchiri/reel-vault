@@ -104,14 +104,19 @@ export async function handleSubmitReel(request: Request, deps: HandlerDeps): Pro
     // A caption-less analysis has no real grounding — the model was told
     // not to invent specifics, but that instruction isn't a guarantee, so
     // flag it for review unconditionally rather than trusting compliance.
+    // The schema forces a score on every response, so with no caption
+    // buildReelPrompt asks for a neutral placeholder; that number is filler,
+    // not an assessment, and storing it would render as a real score next to
+    // the "needs review" badge. Drop the whole viability block instead.
+    const grounded = caption !== null;
     const reel = await deps.reelsRepo.insertReel({
       url,
       caption,
       summary: analysis.summary,
       category: analysis.category,
-      viability_score: analysis.viability.score,
-      viability_reasoning: analysis.viability,
-      needs_review: caption === null,
+      viability_score: grounded ? analysis.viability.score : null,
+      viability_reasoning: grounded ? analysis.viability : null,
+      needs_review: !grounded,
     });
     let toolsWarning: string | undefined;
     try {
