@@ -1,4 +1,14 @@
 .superpowers/
+.claude/
 node_modules/
 dist/
 supabase/.temp/
+
+# Netlify CLI link state — machine-local, contains absolute paths
+.netlify/
+
+# Ad-hoc screenshots dropped in the repo root (leading slash keeps
+# real assets under public/ trackable — e.g. PWA icons)
+/*.jpeg
+/*.jpg
+/*.png

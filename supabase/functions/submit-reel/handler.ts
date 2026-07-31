@@ -64,7 +64,12 @@ export async function handleSubmitReel(request: Request, deps: HandlerDeps): Pro
     });
   }
 
-  if (body.passcode !== deps.expectedPasscode) {
+  // Fail closed on a missing/blank expected passcode. `Deno.env.get(...)!`
+  // is a compile-time assertion only: an unset secret yields undefined at
+  // runtime, and a bare `body.passcode !== undefined` check would then
+  // authenticate any request that simply omits the field.
+  const configured = deps.expectedPasscode;
+  if (typeof configured !== "string" || configured.length === 0 || body.passcode !== configured) {
     return new Response(JSON.stringify({ error: "Invalid passcode" }), {
       status: 401,
       headers: { ...CORS_HEADERS, "Content-Type": "application/json" },

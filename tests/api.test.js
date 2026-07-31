@@ -53,6 +53,22 @@ describe("api", () => {
     expect(body.note).toBe("5 tools every founder needs");
   });
 
+  it("submitReel surfaces the server's warning on a successful save", async () => {
+    fetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ reel: { id: "1" }, warning: "Saved, but analysis failed: boom" }),
+    });
+    const result = await submitReel("https://www.instagram.com/reel/abc");
+    expect(result.ok).toBe(true);
+    expect(result.warning).toBe("Saved, but analysis failed: boom");
+  });
+
+  it("submitReel omits warning when the server sends none", async () => {
+    fetch.mockResolvedValueOnce({ ok: true, json: async () => ({ reel: { id: "1" } }) });
+    const result = await submitReel("https://www.instagram.com/reel/abc");
+    expect(result.warning).toBeUndefined();
+  });
+
   it("submitReel returns the server error message on failure", async () => {
     fetch.mockResolvedValueOnce({ ok: false, json: async () => ({ error: "Invalid passcode" }) });
     const result = await submitReel("https://www.instagram.com/reel/abc");

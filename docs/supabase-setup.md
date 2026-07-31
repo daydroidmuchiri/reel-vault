@@ -17,14 +17,26 @@
    passcode checked inside the handler is the real auth boundary.
 3. Set the function's secrets (never commit these):
    ```
-   supabase secrets set GITHUB_MODELS_TOKEN=github_pat_...
+   supabase secrets set OPENROUTER_API_KEY=sk-or-v1-...
    supabase secrets set REEL_VAULT_PASSCODE=<a long random passphrase, not a short PIN>
    ```
-   `GITHUB_MODELS_TOKEN` is a fine-grained GitHub personal access token with
-   only the **`models: read`** permission — generate one at
-   github.com/settings/tokens. The edge function uses it to call
-   `openai/gpt-4.1-mini` through GitHub Models' free, OpenAI-compatible
-   endpoint (`https://models.github.ai/inference`) instead of paying for
-   Claude API credits.
+   `OPENROUTER_API_KEY` is an OpenRouter API key — create one at
+   openrouter.ai/keys and add a few dollars of credit. The edge function uses
+   it to call `openai/gpt-5-nano` through OpenRouter's OpenAI-compatible
+   endpoint (`https://openrouter.ai/api/v1`).
+
+   **Provider history:** this ran on GitHub Models until it was
+   [fully retired on 2026-07-30](https://github.blog/changelog/2026-07-30-github-models-is-now-retired/),
+   which broke analysis outright. OpenRouter is the replacement. `gpt-5-nano`
+   costs $0.05/1M input and $0.40/1M output — cents per month at personal
+   volume, and ~8x cheaper on input than the `gpt-4.1-mini` it replaces.
+   Any OpenRouter model that supports **structured outputs** can be swapped in
+   via `MODEL` in `supabase/functions/submit-reel/claude.ts`; the request sets
+   `provider: { require_parameters: true }` so OpenRouter only routes to
+   providers that honour `json_schema`. Check a candidate first at
+   `https://openrouter.ai/api/v1/models?supported_parameters=structured_outputs`.
+
+   All four secrets are required — the function now throws at boot if any is
+   missing, rather than starting in a half-configured state.
    `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are injected automatically by the Supabase Edge Runtime — do not set them manually.
 4. Copy the deployed function's URL (`https://<project-ref>.supabase.co/functions/v1/submit-reel`) into `src/config.js` (`submitReelUrl`).

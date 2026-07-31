@@ -1,5 +1,5 @@
 // supabase/functions/submit-reel/supabaseToolsRepo.ts
-import type { SupabaseClient } from "npm:@supabase/supabase-js";
+import type { SupabaseClient } from "npm:@supabase/supabase-js@^2.110.8";
 import type { Tool, ToolsRepo } from "./toolsRepo.ts";
 
 export function createSupabaseToolsRepo(client: SupabaseClient): ToolsRepo {

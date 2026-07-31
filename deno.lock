@@ -3,7 +3,9 @@
   "specifiers": {
     "npm:@anthropic-ai/sdk@*": "0.115.0",
     "npm:@supabase/supabase-js@*": "2.110.8",
+    "npm:@supabase/supabase-js@^2.110.8": "2.110.8",
     "npm:openai@*": "6.49.0",
+    "npm:openai@^6.49.0": "6.49.0",
     "npm:vite@6": "6.4.3",
     "npm:vitest@3": "3.2.7"
   },

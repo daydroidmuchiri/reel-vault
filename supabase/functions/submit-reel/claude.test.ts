@@ -17,6 +17,28 @@ Deno.test("buildReelPrompt instructs against fabricating details when caption is
   assertStringIncludes(prompt, "Do NOT invent or guess specific plot details");
 });
 
+// OpenRouter serves the same model from multiple providers, and not every
+// provider honours json_schema — without `require_parameters` OpenRouter may
+// silently route to one that downgrades to json_object, breaking the strict
+// contract the schema (and the score-range check in handler.ts) relies on.
+Deno.test("analyzeReel pins the model and forces a structured-output-capable route", async () => {
+  let captured: Record<string, unknown> | undefined;
+  const fakeClient = {
+    chat: {
+      completions: {
+        create: (params: unknown) => {
+          captured = params as Record<string, unknown>;
+          return Promise.resolve({ choices: [{ message: { content: "{}" } }] });
+        },
+      },
+    },
+  };
+  await analyzeReel("https://instagram.com/reel/abc", "caption", fakeClient);
+  assertEquals(captured?.model, "openai/gpt-5-nano");
+  assertEquals((captured?.provider as { require_parameters?: boolean })?.require_parameters, true);
+  assertEquals((captured?.response_format as { type?: string })?.type, "json_schema");
+});
+
 Deno.test("analyzeReel parses the JSON content from the model response", async () => {
   const analysis = {
     summary: "A tool roundup reel.",

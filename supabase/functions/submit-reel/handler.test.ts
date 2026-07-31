@@ -93,6 +93,35 @@ Deno.test("rejects an invalid passcode", async () => {
   assertEquals(res.status, 401);
 });
 
+// Regression: `Deno.env.get("REEL_VAULT_PASSCODE")!` yields undefined at
+// runtime when the secret was never set, and `undefined !== undefined` is
+// false — so a request omitting `passcode` entirely used to sail through
+// the check. The handler must fail closed on a missing expected passcode
+// rather than authenticating everyone.
+Deno.test("fails closed when the expected passcode is unset", async () => {
+  const res = await handleSubmitReel(
+    jsonRequest({ url: "https://www.instagram.com/reel/abc" }),
+    makeDeps({ expectedPasscode: undefined as unknown as string }),
+  );
+  assertEquals(res.status, 401);
+});
+
+Deno.test("fails closed when the expected passcode is an empty string", async () => {
+  const res = await handleSubmitReel(
+    jsonRequest({ url: "https://www.instagram.com/reel/abc", passcode: "" }),
+    makeDeps({ expectedPasscode: "" }),
+  );
+  assertEquals(res.status, 401);
+});
+
+Deno.test("rejects a request that omits the passcode when one is configured", async () => {
+  const res = await handleSubmitReel(
+    jsonRequest({ url: "https://www.instagram.com/reel/abc" }),
+    makeDeps(),
+  );
+  assertEquals(res.status, 401);
+});
+
 Deno.test("rejects a non-Instagram URL", async () => {
   const res = await handleSubmitReel(jsonRequest({ url: "https://example.com", passcode: "1234" }), makeDeps());
   assertEquals(res.status, 400);

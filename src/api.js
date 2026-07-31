@@ -36,5 +36,8 @@ export async function submitReel(url, note = "") {
   if (!res.ok) {
     return { ok: false, error: body.error || `Request failed: ${res.status}` };
   }
-  return { ok: true, reel: body.reel };
+  // The function returns a `warning` when the reel saved but something
+  // downstream degraded (analysis failed, tools couldn't be linked). Pass
+  // it through so the UI can say why a reel came back needing review.
+  return { ok: true, reel: body.reel, ...(body.warning ? { warning: body.warning } : {}) };
 }

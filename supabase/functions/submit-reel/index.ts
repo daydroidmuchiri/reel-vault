@@ -1,13 +1,23 @@
-import { createClient } from "npm:@supabase/supabase-js";
+import { createClient } from "npm:@supabase/supabase-js@^2.110.8";
 import { fetchInstagramCaption } from "./instagram.ts";
 import { createModelClient } from "./claude.ts";
 import { createSupabaseToolsRepo } from "./supabaseToolsRepo.ts";
 import { handleSubmitReel, type ReelsRepo } from "./handler.ts";
 
-const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const githubModelsToken = Deno.env.get("GITHUB_MODELS_TOKEN")!;
-const expectedPasscode = Deno.env.get("REEL_VAULT_PASSCODE")!;
+// `Deno.env.get(...)!` only silences the type checker — a missing secret is
+// still undefined at runtime. Fail loudly at boot instead of serving traffic
+// in a half-configured state (an undefined REEL_VAULT_PASSCODE would
+// otherwise match any request that omits the field). See docs/supabase-setup.md.
+function requireEnv(name: string): string {
+  const value = Deno.env.get(name);
+  if (!value) throw new Error(`Missing required environment variable: ${name}`);
+  return value;
+}
+
+const supabaseUrl = requireEnv("SUPABASE_URL");
+const supabaseServiceKey = requireEnv("SUPABASE_SERVICE_ROLE_KEY");
+const openRouterApiKey = requireEnv("OPENROUTER_API_KEY");
+const expectedPasscode = requireEnv("REEL_VAULT_PASSCODE");
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
@@ -23,7 +33,7 @@ Deno.serve((request) =>
   handleSubmitReel(request, {
     expectedPasscode,
     fetchCaption: (url) => fetchInstagramCaption(url),
-    analysisClient: createModelClient(githubModelsToken),
+    analysisClient: createModelClient(openRouterApiKey),
     reelsRepo,
     toolsRepo: createSupabaseToolsRepo(supabase),
   })

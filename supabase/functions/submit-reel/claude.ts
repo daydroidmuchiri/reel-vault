@@ -1,4 +1,4 @@
-import OpenAI from "npm:openai";
+import OpenAI from "npm:openai@^6.49.0";
 
 export interface ReelAnalysis {
   summary: string;
@@ -83,10 +83,16 @@ export function buildReelPrompt(url: string, caption: string | null): string {
   ].join("\n");
 }
 
-// GitHub Models (https://models.github.ai) exposes OpenAI-family models
-// through an OpenAI-compatible Chat Completions API — this interface is
-// intentionally just the slice of the OpenAI SDK's shape that analyzeReel
-// needs, so tests can supply a fake without touching the network.
+// OpenRouter (https://openrouter.ai) exposes OpenAI-family models through an
+// OpenAI-compatible Chat Completions API — this interface is intentionally
+// just the slice of the OpenAI SDK's shape that analyzeReel needs, so tests
+// can supply a fake without touching the network.
+//
+// Provider history: Claude API -> GitHub Models -> OpenRouter. GitHub Models
+// was fully retired on 2026-07-30, which broke analysis outright; OpenRouter
+// is the replacement. The module is still named claude.ts for import
+// stability across those swaps — it has not called the Claude API since
+// commit 08f5274.
 export interface AnalysisClient {
   chat: {
     completions: {
@@ -101,12 +107,16 @@ export async function analyzeReel(
   client: AnalysisClient,
 ): Promise<ReelAnalysis> {
   const response = await client.chat.completions.create({
-    model: "openai/gpt-4.1-mini",
+    model: MODEL,
     messages: [{ role: "user", content: buildReelPrompt(url, caption) }],
     response_format: {
       type: "json_schema",
       json_schema: { name: "reel_analysis", strict: true, schema: RESPONSE_SCHEMA },
     },
+    // Only route to providers that actually implement json_schema. Without
+    // this OpenRouter may fall back to a provider that downgrades to
+    // json_object, which would return unvalidated shapes.
+    provider: { require_parameters: true },
   });
   const content = response.choices[0]?.message?.content;
   if (!content) {
@@ -115,9 +125,14 @@ export async function analyzeReel(
   return JSON.parse(content) as ReelAnalysis;
 }
 
+// Cheap, OpenAI-family (so `strict: true` json_schema semantics match what
+// RESPONSE_SCHEMA and the handler's score check assume), 400k context.
+// $0.05/1M input, $0.40/1M output — roughly cents per month at personal volume.
+export const MODEL = "openai/gpt-5-nano";
+
 export function createModelClient(apiKey: string): AnalysisClient {
   return new OpenAI({
     apiKey,
-    baseURL: "https://models.github.ai/inference",
+    baseURL: "https://openrouter.ai/api/v1",
   }) as unknown as AnalysisClient;
 }

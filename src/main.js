@@ -82,11 +82,19 @@ $("reel-form").addEventListener("submit", async (e) => {
   button.disabled = false;
   button.textContent = "Save reel";
   if (!result.ok) {
+    error.classList.remove("warning");
     error.textContent = result.error;
     error.hidden = false;
     return;
   }
   input.value = "";
   noteInput.value = "";
+  // Saved, but something degraded (analysis or tool-linking failed). Show
+  // why, rather than leaving an unexplained "Needs review" badge in the feed.
+  if (result.warning) {
+    error.classList.add("warning");
+    error.textContent = result.warning;
+    error.hidden = false;
+  }
   loadReels();
 });
