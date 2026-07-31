@@ -21,22 +21,50 @@
    supabase secrets set REEL_VAULT_PASSCODE=<a long random passphrase, not a short PIN>
    ```
    `OPENROUTER_API_KEY` is an OpenRouter API key — create one at
-   openrouter.ai/keys and add a few dollars of credit. The edge function uses
-   it to call `openai/gpt-5-nano` through OpenRouter's OpenAI-compatible
-   endpoint (`https://openrouter.ai/api/v1`).
+   openrouter.ai/keys. **No credit card or credit purchase is required**: the
+   edge function calls `nvidia/nemotron-3-super-120b-a12b:free` through
+   OpenRouter's OpenAI-compatible endpoint (`https://openrouter.ai/api/v1`),
+   and that model is free in both directions.
 
    **Provider history:** this ran on GitHub Models until it was
    [fully retired on 2026-07-30](https://github.blog/changelog/2026-07-30-github-models-is-now-retired/),
-   which broke analysis outright. OpenRouter is the replacement. `gpt-5-nano`
-   costs $0.05/1M input and $0.40/1M output — cents per month at personal
-   volume, and ~8x cheaper on input than the `gpt-4.1-mini` it replaces.
-   Any OpenRouter model that supports **structured outputs** can be swapped in
-   via `MODEL` in `supabase/functions/submit-reel/claude.ts`; the request sets
-   `provider: { require_parameters: true }` so OpenRouter only routes to
-   providers that honour `json_schema`. Check a candidate first at
-   `https://openrouter.ai/api/v1/models?supported_parameters=structured_outputs`.
+   which broke analysis outright. OpenRouter is the replacement, kept on a
+   free model to preserve the original zero-cost constraint.
 
-   All four secrets are required — the function now throws at boot if any is
+   All four secrets are required — the function throws at boot if any is
    missing, rather than starting in a half-configured state.
+
+### Free-tier limits
+
+OpenRouter caps `:free` models at **20 requests/minute** and **50 requests/day**
+(1,000/day once an account has ever purchased $10 in credit). Saving reels by
+hand stays far under this. Failed requests can still count toward the daily
+quota. If you exceed it, the reel is still saved and flagged **Needs review** —
+`handler.ts` degrades rather than dropping data — so a quota hit costs you the
+analysis, never the reel.
+
+### Swapping the model
+
+Change `MODEL` in `supabase/functions/submit-reel/claude.ts`. The replacement
+must implement **structured outputs**, since the code sends a strict
+`json_schema` response format.
+
+Verify at the *endpoint* level, not the model level — the same model is served
+by several providers and only some honour `json_schema`, so the model-level
+flag is misleading:
+
+```
+curl "https://openrouter.ai/api/v1/models/<model-id>/endpoints"
+```
+
+Check that at least one endpoint has `pricing.prompt`/`pricing.completion` of
+`"0"` and lists `structured_outputs` in `supported_parameters`. (Example: as of
+2026-07-31 `google/gemma-4-26b-a4b-it:free` is served by two free endpoints,
+and only one of them supports structured outputs.) The request sets
+`provider: { require_parameters: true }` so OpenRouter refuses to route to a
+non-conforming provider instead of silently downgrading to `json_object`.
+
+Other free, structured-output-capable options as of 2026-07-31:
+`openai/gpt-oss-20b:free`, `nvidia/nemotron-nano-9b-v2:free`.
    `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are injected automatically by the Supabase Edge Runtime — do not set them manually.
 4. Copy the deployed function's URL (`https://<project-ref>.supabase.co/functions/v1/submit-reel`) into `src/config.js` (`submitReelUrl`).

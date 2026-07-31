@@ -34,7 +34,7 @@ Deno.test("analyzeReel pins the model and forces a structured-output-capable rou
     },
   };
   await analyzeReel("https://instagram.com/reel/abc", "caption", fakeClient);
-  assertEquals(captured?.model, "openai/gpt-5-nano");
+  assertEquals(captured?.model, "nvidia/nemotron-3-super-120b-a12b:free");
   assertEquals((captured?.provider as { require_parameters?: boolean })?.require_parameters, true);
   assertEquals((captured?.response_format as { type?: string })?.type, "json_schema");
 });

@@ -30,7 +30,7 @@ If no note/caption is available, the model is instructed to say so plainly rathe
 - **Frontend:** Single-page PWA, installable to the home screen. Two views: a submit form + feed of saved reels, and a Tools tab (search/filter catalog).
 - **Backend:** Supabase (Postgres + Edge Functions), matching the stack used in `video-to-food`.
 - **Auth:** A simple PIN/passcode gate on the PWA. No multi-user auth — this is Daniel's personal tool.
-- **LLM:** OpenRouter's OpenAI-compatible endpoint, model `openai/gpt-5-nano`, called server-side from the Edge Function that handles submission. (Provider history: originally spec'd against the Claude API; switched to GitHub Models to avoid spending Anthropic credits on a personal low-volume tool; moved to OpenRouter on 2026-07-31 after GitHub Models was fully retired on 2026-07-30. The model must support structured outputs — see `docs/supabase-setup.md`.)
+- **LLM:** OpenRouter's OpenAI-compatible endpoint, model `nvidia/nemotron-3-super-120b-a12b:free`, called server-side from the Edge Function that handles submission. **Running at zero cost is a standing constraint**, so the model must be a free (`:free`) one; it must also support structured outputs, since the request sends a strict `json_schema`. (Provider history: originally spec'd against the Claude API; switched to GitHub Models to avoid spending Anthropic credits on a personal low-volume tool; moved to OpenRouter on 2026-07-31 after GitHub Models was fully retired on 2026-07-30. See `docs/supabase-setup.md` for how to verify a replacement model and for free-tier rate limits.)
 
 ## Data model
 

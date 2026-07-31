@@ -83,7 +83,7 @@ export function buildReelPrompt(url: string, caption: string | null): string {
   ].join("\n");
 }
 
-// OpenRouter (https://openrouter.ai) exposes OpenAI-family models through an
+// OpenRouter (https://openrouter.ai) fronts many model families behind one
 // OpenAI-compatible Chat Completions API — this interface is intentionally
 // just the slice of the OpenAI SDK's shape that analyzeReel needs, so tests
 // can supply a fake without touching the network.
@@ -125,10 +125,13 @@ export async function analyzeReel(
   return JSON.parse(content) as ReelAnalysis;
 }
 
-// Cheap, OpenAI-family (so `strict: true` json_schema semantics match what
-// RESPONSE_SCHEMA and the handler's score check assume), 400k context.
-// $0.05/1M input, $0.40/1M output — roughly cents per month at personal volume.
-export const MODEL = "openai/gpt-5-nano";
+// Free tier ($0 in/out), 262k context, served first-party by Nvidia, and the
+// most capable of the handful of free models whose endpoints actually
+// implement json_schema. Verify any replacement is still free AND
+// structured-output-capable at the *endpoint* level before swapping — the
+// model-level flag lies (see docs/supabase-setup.md):
+//   https://openrouter.ai/api/v1/models/<id>/endpoints
+export const MODEL = "nvidia/nemotron-3-super-120b-a12b:free";
 
 export function createModelClient(apiKey: string): AnalysisClient {
   return new OpenAI({
